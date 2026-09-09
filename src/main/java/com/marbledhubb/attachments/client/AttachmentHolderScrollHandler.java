@@ -1,29 +1,25 @@
 package com.marbledhubb.attachments.client;
 
-import com.marbledhubb.attachments.AttachmentLib;
-import com.marbledhubb.attachments.item.AttachmentHolderItem;
+import com.marbledhubb.attachments.world.item.AttachmentHolderItem;
 import com.marbledhubb.attachments.mixin.client.AbstractContainerScreenInvoker;
-import com.marbledhubb.attachments.network.ShiftSelectedAttachmentSlotMessage;
+import com.marbledhubb.attachments.network.payload.ShiftSelectedAttachmentSlotPayload;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.event.ScreenEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.client.event.ScreenEvent;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 @OnlyIn(Dist.CLIENT)
-@Mod.EventBusSubscriber(modid = AttachmentLib.MOD_ID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
 public class AttachmentHolderScrollHandler {
     private static double accumulativeScrollDelta = 0;
 
-    @SubscribeEvent
     public static void onMouseScrolled(ScreenEvent.MouseScrolled.Pre event) {
         if (!(event.getScreen() instanceof AbstractContainerScreen<?> screen)) return;
         double x = event.getMouseX();
         double y = event.getMouseY();
-        double scrollDelta = event.getScrollDelta();
+        double scrollDelta = event.getScrollDeltaY();
 
         Slot slot = ((AbstractContainerScreenInvoker) screen).invokeFindSlot(x, y);
         if (slot == null) {
@@ -44,7 +40,7 @@ public class AttachmentHolderScrollHandler {
         }
 
         if (attachmentHolder.shiftSelectedSlot(itemStack, shiftAmount))
-            AttachmentLib.PACKET_HANDLER.sendToServer(new ShiftSelectedAttachmentSlotMessage(
+            PacketDistributor.sendToServer(new ShiftSelectedAttachmentSlotPayload(
                     screen.getMenu().containerId,
                     screen.getMenu().getStateId(),
                     slot.index,

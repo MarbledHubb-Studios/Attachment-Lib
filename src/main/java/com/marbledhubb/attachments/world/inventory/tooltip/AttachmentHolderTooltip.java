@@ -1,6 +1,6 @@
-package com.marbledhubb.attachments.tooltip;
+package com.marbledhubb.attachments.world.inventory.tooltip;
 
-import com.marbledhubb.attachments.item.AttachmentSlotSettings;
+import com.marbledhubb.attachments.world.item.AttachmentSlotSettings;
 import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import net.minecraft.world.item.ItemStack;
 

@@ -1,15 +1,15 @@
-package com.marbledhubb.attachments.item;
+package com.marbledhubb.attachments.world.item;
 
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Multimap;
-import com.marbledhubb.attachments.client.renderer.AttachmentHolderArmorModel;
-import com.marbledhubb.attachments.tooltip.AttachmentHolderTooltip;
+import com.marbledhubb.attachments.AttachmentLib;
+import com.marbledhubb.attachments.client.model.AttachmentHolderArmorModel;
+import com.marbledhubb.attachments.component.ModDataComponents;
+import com.marbledhubb.attachments.world.inventory.tooltip.AttachmentHolderTooltip;
 import com.marbledhubb.attachments.util.EquipmentUtil;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.Model;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
+import net.minecraft.core.Holder;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -22,13 +22,12 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ClickAction;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.inventory.tooltip.TooltipComponent;
-import net.minecraft.world.item.ArmorItem;
-import net.minecraft.world.item.Equipable;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.ItemUtils;
+import net.minecraft.world.item.*;
+import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.client.extensions.common.IClientItemExtensions;
+import net.neoforged.neoforge.client.extensions.common.IClientItemExtensions;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -40,7 +39,7 @@ public interface AttachmentHolderItem {
     //TODO ammunition like arrows for bows (and actual ammo e.g tacz guns) consumed from generic storage slots. refer to https://discord.com/channels/1459427496784298150/1491653851093401858/1519550589246111805 from ar task post - mn
 
     default boolean tryToEquipAttachment(ItemStack itemStack, ItemStack possibleAttachment, LivingEntity entity) {
-        Map<Integer, ItemStack> attachments = getAttachments(itemStack);
+        TreeMap<Integer, ItemStack> attachments = getAttachments(itemStack);
 
         int slotIndex = 0;
         for (AttachmentSlotSettings slotSettings : getAttachmentSlotSettings()) {
@@ -64,107 +63,82 @@ public interface AttachmentHolderItem {
         }
         playEquipAttachmentSound(itemStack, attachment, entity);
 
-        CompoundTag compoundTag = itemStack.getOrCreateTag();
-        if (!compoundTag.contains("Attachments")) {
-            compoundTag.put("Attachments", new ListTag());
+        TreeMap<Integer, ItemStack> attachments = new TreeMap<>(getAttachments(itemStack));
+        attachments.put(slotIndex, attachment);
+        itemStack.set(ModDataComponents.ATTACHMENTS, attachments);
+    }
+
+    private void addAttachmentAttributeModifiers(ItemStack itemStack, ItemStack attachment, int attachmentSlotIndex) {
+        ItemAttributeModifiers modifiers = itemStack.getAttributeModifiers();
+
+        for (ItemAttributeModifiers.Entry attachmentEntry : attachment.getAttributeModifiers().modifiers()) {
+            boolean addNewModifier = true;
+
+            AttributeModifier attachmentModifier = attachmentEntry.modifier();
+            Holder<Attribute> attribute = attachmentEntry.attribute();
+
+            for (ItemAttributeModifiers.Entry entry : modifiers.modifiers()) {
+                if (entry.attribute() != attribute) continue;
+
+                AttributeModifier modifier = entry.modifier();
+
+                if (modifier.operation() == AttributeModifier.Operation.ADD_VALUE && attachmentModifier.operation() == AttributeModifier.Operation.ADD_VALUE) {
+                    modifiers.modifiers().remove(entry);
+                    modifiers.modifiers().add(new ItemAttributeModifiers.Entry(attribute, new AttributeModifier(modifier.id(), modifier.amount() + attachmentModifier.amount(), AttributeModifier.Operation.ADD_VALUE), entry.slot()));
+                    addNewModifier = false;
+                    break;
+                } else if (modifier.operation() == AttributeModifier.Operation.ADD_MULTIPLIED_BASE && attachmentModifier.operation() == AttributeModifier.Operation.ADD_MULTIPLIED_BASE) {
+                    modifiers.modifiers().remove(entry);
+                    modifiers.modifiers().add(new ItemAttributeModifiers.Entry(attribute, new AttributeModifier(modifier.id(), modifier.amount() + attachmentModifier.amount(), AttributeModifier.Operation.ADD_MULTIPLIED_BASE), entry.slot()));
+                    addNewModifier = false;
+                    break;
+                }
+            }
+
+            if (addNewModifier)
+                modifiers.modifiers().add(new ItemAttributeModifiers.Entry(
+                        attribute,
+                        new AttributeModifier(ResourceLocation.fromNamespaceAndPath(AttachmentLib.MOD_ID, UUID.nameUUIDFromBytes((attachmentEntry.slot() + ":" + attachmentSlotIndex + ":" + attribute + ":" + attachmentModifier).getBytes(StandardCharsets.UTF_8)).toString()), attachmentModifier.amount(), attachmentModifier.operation()),
+                        attachmentEntry.slot()));
         }
-
-        ListTag listTag = compoundTag.getList("Attachments", Tag.TAG_COMPOUND);
-
-        CompoundTag pairTag = new CompoundTag();
-        pairTag.putInt("Slot", slotIndex);
-        pairTag.put("Attachment", attachment.save(new CompoundTag()));
-
-        listTag.add(pairTag);
     }
 
     default Optional<ItemStack> tryToRemoveAttachment(boolean removeFirst, ItemStack itemStack, LivingEntity entity) {
-        CompoundTag compoundTag = itemStack.getOrCreateTag();
-        if (!compoundTag.contains("Attachments")) {
+        TreeMap<Integer, ItemStack> attachments = new TreeMap<>(getAttachments(itemStack));
+        if (attachments.isEmpty()) {
             return Optional.empty();
-        } else {
-            ListTag listTag = compoundTag.getList("Attachments", 10);
-            if (listTag.isEmpty()) {
-                return Optional.empty();
-            } else {
-                int targetSlotIndex = removeFirst ? getAttachments(itemStack).firstKey() : getSelectedSlotIndex(itemStack);
+        }
 
-                int i = 0;
-                for (Tag tag : listTag) {
-                    CompoundTag pairTag = (CompoundTag) tag;
+        int targetSlotIndex = removeFirst ? Collections.min(getAttachments(itemStack).keySet()) : getSelectedSlotIndex(itemStack);
 
-                    int slotIndex = pairTag.getInt("Slot");
-                    if (slotIndex == targetSlotIndex) {
-                        ItemStack attachment = ItemStack.of(pairTag.getCompound("Attachment"));
-
-                        if (attachment.getItem() instanceof AttachmentItem attachmentItem) {
-                            attachmentItem.onUnequipFromAttachmentSlot(attachment, itemStack, entity);
-                            EquipmentSlot equipmentSlot = EquipmentUtil.findEquipmentSlot(entity, itemStack);
-                            if (equipmentSlot != null) attachmentItem.onAttachmentUnequipFromEquipmentSlot(equipmentSlot, attachment, itemStack, slotIndex, entity);
-                        }
-                        playUnequipAttachmentSound(itemStack, attachment, entity);
-
-                        listTag.remove(i);
-                        if (listTag.isEmpty()) {
-                            itemStack.removeTagKey("Attachments");
-                        }
-
-                        compoundTag.remove("SelectedSlot");
-
-                        return Optional.of(attachment);
-                    }
-                    i++;
+        for (Map.Entry<Integer, ItemStack> entry : attachments.entrySet()) {
+            if (entry.getKey() == targetSlotIndex) {
+                if (entry.getValue().getItem() instanceof AttachmentItem attachmentItem) {
+                    attachmentItem.onUnequipFromAttachmentSlot(entry.getValue(), itemStack, entity);
+                    EquipmentSlot equipmentSlot = EquipmentUtil.findEquipmentSlot(entity, itemStack);
+                    if (equipmentSlot != null) attachmentItem.onAttachmentUnequipFromEquipmentSlot(equipmentSlot, entry.getValue(), itemStack, entry.getKey(), entity);
                 }
-                return Optional.empty();
+                playUnequipAttachmentSound(itemStack, entry.getValue(), entity);
+
+                attachments.remove(entry.getKey());
+                if (attachments.isEmpty()) {
+                    itemStack.remove(ModDataComponents.ATTACHMENTS);
+                }
+
+                itemStack.remove(ModDataComponents.SELECTED_ATTACHMENT_SLOT_INDEX);
+
+                return Optional.of(entry.getValue());
             }
         }
-    }
-
-    default void updateAttachment(ItemStack itemStack, ItemStack attachment, int slotIndex) {
-        CompoundTag compoundTag = itemStack.getOrCreateTag();
-        if (!compoundTag.contains("Attachments")) return;
-
-        ListTag listTag = compoundTag.getList("Attachments", Tag.TAG_COMPOUND);
-        if (listTag.isEmpty()) return;
-
-        for (Tag tag : listTag) {
-            CompoundTag pairTag = (CompoundTag) tag;
-            if (pairTag.getInt("Slot") == slotIndex) {
-                listTag.remove(pairTag);
-
-                CompoundTag newPairTag = new CompoundTag();
-                newPairTag.putInt("Slot", slotIndex);
-                newPairTag.put("Attachment", attachment.save(new CompoundTag()));
-                listTag.add(newPairTag);
-                break;
-            }
-        }
+        return Optional.empty();
     }
 
     default TreeMap<Integer, ItemStack> getAttachments(ItemStack itemStack) {
-        CompoundTag compoundTag = itemStack.getTag();
-        if (compoundTag == null) {
-            return new TreeMap<>();
-        } else {
-            TreeMap<Integer, ItemStack> attachments = new TreeMap<>();
-
-            ListTag listTag = compoundTag.getList("Attachments", Tag.TAG_COMPOUND);
-
-            for (Tag tag : listTag) {
-                CompoundTag pairTag = (CompoundTag) tag;
-
-                int slotIndex = pairTag.getInt("Slot");
-                ItemStack attachment = ItemStack.of(pairTag.getCompound("Attachment"));
-
-                attachments.put(slotIndex, attachment);
-            }
-
-            return attachments;
-        }
+        return itemStack.getOrDefault(ModDataComponents.ATTACHMENTS, new TreeMap<>());
     }
 
     default boolean shiftSelectedSlot(ItemStack itemStack, int shiftAmount) {
-        Map<Integer, ItemStack> attachments = getAttachments(itemStack);
+        TreeMap<Integer, ItemStack> attachments = getAttachments(itemStack);
         if (attachments.size() <= 1) return false;
 
         int slotIndex = getSelectedSlotIndex(itemStack);
@@ -179,7 +153,7 @@ public interface AttachmentHolderItem {
                 }
 
                 if (attachments.containsKey(slotIndex)) {
-                    itemStack.getOrCreateTag().putInt("SelectedSlot", slotIndex);
+                    itemStack.set(ModDataComponents.SELECTED_ATTACHMENT_SLOT_INDEX, slotIndex);
                     break;
                 }
             }
@@ -188,21 +162,18 @@ public interface AttachmentHolderItem {
     }
 
     default int getSelectedSlotIndex(ItemStack itemStack) {
-        CompoundTag compoundTag = itemStack.getOrCreateTag();
+        if (itemStack.has(ModDataComponents.SELECTED_ATTACHMENT_SLOT_INDEX))
+            return itemStack.get(ModDataComponents.SELECTED_ATTACHMENT_SLOT_INDEX);
 
-        if (compoundTag.contains("SelectedSlot")) {
-            return compoundTag.getInt("SelectedSlot");
-        }
-
-        TreeMap<Integer, ItemStack> attachments = getAttachments(itemStack);
-        return attachments.isEmpty() ? -1 : attachments.firstKey();
+        Map<Integer, ItemStack> attachments = getAttachments(itemStack);
+        return attachments.isEmpty() ? -1 : Collections.min(attachments.keySet());
     }
 
     default void playEquipAttachmentSound(ItemStack itemStack, ItemStack attachment, Entity entity) {
         if (attachment.getItem() instanceof Equipable equipable) {
-            entity.playSound(equipable.getEquipSound(), 1.0F, 1.0F);
+            entity.playSound(equipable.getEquipSound().value(), 1, 1);
         } else if (itemStack.getItem() instanceof Equipable equipable) {
-            entity.playSound(equipable.getEquipSound(), 1.0F, 1.0F);
+            entity.playSound(equipable.getEquipSound().value(), 1, 1);
         }
     }
 
@@ -257,33 +228,40 @@ public interface AttachmentHolderItem {
         return false;
     }
 
-    default @NotNull Multimap<Attribute, AttributeModifier> getAttributeModifiers(Multimap<Attribute, AttributeModifier> holderAttributeModifiers, @NotNull EquipmentSlot equipmentSlot, ItemStack itemStack) {
-        Multimap<Attribute, AttributeModifier> map = HashMultimap.create(holderAttributeModifiers);
-        getAttachments(itemStack).forEach((slotIndex, attachment) -> {
-                if (!getAttachmentSlotSettings()[slotIndex].isStorageSlot()) {
-                    attachment.getAttributeModifiers(equipmentSlot).forEach((attribute, modifier) -> {
-                        boolean addNewModifier = true;
+    default ItemAttributeModifiers getAttributeModifiers(ItemAttributeModifiers modifiers, ItemStack itemStack) {
+        getAttachments(itemStack).forEach((attachmentSlotIndex, attachment) -> {
+            for (ItemAttributeModifiers.Entry attachmentEntry : attachment.getAttributeModifiers().modifiers()) {
+                boolean addNewModifier = true;
 
-                        for (AttributeModifier modifier1 : map.get(attribute)) {
-                            if (modifier.getOperation() == AttributeModifier.Operation.ADDITION && modifier1.getOperation() == AttributeModifier.Operation.ADDITION) {
-                                map.remove(attribute, modifier1);
-                                map.put(attribute, new AttributeModifier(modifier1.getId(), modifier1.getName(), modifier.getAmount() + modifier1.getAmount(), AttributeModifier.Operation.ADDITION));
-                                addNewModifier = false;
-                                break;
-                            } else if (modifier.getOperation() == AttributeModifier.Operation.MULTIPLY_BASE && modifier1.getOperation() == AttributeModifier.Operation.MULTIPLY_BASE) {
-                                map.remove(attribute, modifier1);
-                                map.put(attribute, new AttributeModifier(modifier1.getId(), modifier1.getName(), modifier.getAmount() + modifier1.getAmount(), AttributeModifier.Operation.MULTIPLY_BASE));
-                                addNewModifier = false;
-                                break;
-                            }
-                        }
+                AttributeModifier attachmentModifier = attachmentEntry.modifier();
+                Holder<Attribute> attribute = attachmentEntry.attribute();
 
-                        if (addNewModifier)
-                            map.put(attribute, new AttributeModifier(UUID.nameUUIDFromBytes((equipmentSlot + ":" + slotIndex + ":" + attribute + ":" + modifier).getBytes(StandardCharsets.UTF_8)), modifier.getName(), modifier.getAmount(), modifier.getOperation()));
-                    });
+                for (ItemAttributeModifiers.Entry entry : modifiers.modifiers()) {
+                    if (entry.attribute() != attribute) continue;
+
+                    AttributeModifier modifier = entry.modifier();
+
+                    if (modifier.operation() == AttributeModifier.Operation.ADD_VALUE && attachmentModifier.operation() == AttributeModifier.Operation.ADD_VALUE) {
+                        modifiers.modifiers().remove(entry);
+                        modifiers.modifiers().add(new ItemAttributeModifiers.Entry(attribute, new AttributeModifier(modifier.id(), modifier.amount() + attachmentModifier.amount(), AttributeModifier.Operation.ADD_VALUE), entry.slot()));
+                        addNewModifier = false;
+                        break;
+                    } else if (modifier.operation() == AttributeModifier.Operation.ADD_MULTIPLIED_BASE && attachmentModifier.operation() == AttributeModifier.Operation.ADD_MULTIPLIED_BASE) {
+                        modifiers.modifiers().remove(entry);
+                        modifiers.modifiers().add(new ItemAttributeModifiers.Entry(attribute, new AttributeModifier(modifier.id(), modifier.amount() + attachmentModifier.amount(), AttributeModifier.Operation.ADD_MULTIPLIED_BASE), entry.slot()));
+                        addNewModifier = false;
+                        break;
+                    }
                 }
+
+                if (addNewModifier)
+                    modifiers.modifiers().add(new ItemAttributeModifiers.Entry(
+                            attribute,
+                            new AttributeModifier(ResourceLocation.fromNamespaceAndPath(AttachmentLib.MOD_ID, UUID.nameUUIDFromBytes((attachmentEntry.slot() + ":" + attachmentSlotIndex + ":" + attribute + ":" + attachmentModifier).getBytes(StandardCharsets.UTF_8)).toString()), attachmentModifier.amount(), attachmentModifier.operation()),
+                            attachmentEntry.slot()));
+            }
         });
-        return map;
+        return modifiers;
     }
 
     default void inventoryTick(@NotNull ItemStack itemStack, @NotNull Level level, @NotNull Entity entity, int slotIndex, boolean selected) {
@@ -299,10 +277,10 @@ public interface AttachmentHolderItem {
         });
     }
 
-    default <T extends LivingEntity> void damageAttachments(ItemStack stack, int amount, T entity, Consumer<T> onBroken) {
+    default <T extends LivingEntity> void damageAttachments(@NotNull ItemStack stack, int amount, @Nullable T entity, @NotNull Consumer<Item> onBroken) {
         getAttachments(stack).forEach((slotIndex, attachment) -> {
             if (!getAttachmentSlotSettings()[slotIndex].isStorageSlot())
-                attachment.hurtAndBreak(amount, entity, onBroken);
+                attachment.hurtAndBreak(amount, (ServerLevel) entity.level(), entity, onBroken);
         });
     }
 
@@ -311,7 +289,7 @@ public interface AttachmentHolderItem {
         getAttachments(itemEntity.getItem()).forEach((slotIndex, attachment) ->
                 list.add(attachment));
 
-        ItemUtils.onContainerDestroyed(itemEntity, list.stream());
+        ItemUtils.onContainerDestroyed(itemEntity, list);
     }
 
     default @NotNull Optional<TooltipComponent> getTooltipImage(@NotNull ItemStack itemStack) {

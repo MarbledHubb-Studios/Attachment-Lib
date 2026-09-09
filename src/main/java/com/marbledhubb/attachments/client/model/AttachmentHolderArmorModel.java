@@ -1,4 +1,4 @@
-package com.marbledhubb.attachments.client.renderer;
+package com.marbledhubb.attachments.client.model;
 
 import com.marbledhubb.attachments.mixin.client.HumanoidArmorLayerInvoker;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -13,10 +13,13 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.*;
 import net.minecraft.world.item.armortrim.ArmorTrim;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
 
+@OnlyIn(Dist.CLIENT)
 public class AttachmentHolderArmorModel<T extends LivingEntity> extends HumanoidModel<T> {
     private final Model baseModel;
     private final T entity;

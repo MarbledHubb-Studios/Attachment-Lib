@@ -1,8 +1,8 @@
-package com.marbledhubb.attachments.client.tooltip;
+package com.marbledhubb.attachments.client.gui.screens.inventory.tooltip.custom;
 
 import com.marbledhubb.attachments.AttachmentLib;
-import com.marbledhubb.attachments.item.AttachmentSlotSettings;
-import com.marbledhubb.attachments.tooltip.AttachmentHolderTooltip;
+import com.marbledhubb.attachments.world.item.AttachmentSlotSettings;
+import com.marbledhubb.attachments.world.inventory.tooltip.AttachmentHolderTooltip;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -10,8 +10,8 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
