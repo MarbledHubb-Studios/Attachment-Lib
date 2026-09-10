@@ -9,12 +9,15 @@ import net.minecraft.client.model.Model;
 import net.minecraft.client.model.geom.ModelLayers;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.*;
 import net.minecraft.world.item.armortrim.ArmorTrim;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.client.ClientHooks;
+import net.neoforged.neoforge.client.extensions.common.IClientItemExtensions;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
@@ -37,30 +40,38 @@ public class AttachmentHolderArmorModel<T extends LivingEntity> extends Humanoid
     }
 
     @Override
-    public void renderToBuffer(@NotNull PoseStack poseStack, @NotNull VertexConsumer buffer, int packedLight, int packedOverlay, float red, float green, float blue, float alpha) {
-        baseModel.renderToBuffer(poseStack, buffer, packedLight, packedOverlay, red, green, blue, alpha);
+    public void renderToBuffer(@NotNull PoseStack poseStack, @NotNull VertexConsumer buffer, int packedLight, int packedOverlay, int color) {
+        baseModel.renderToBuffer(poseStack, buffer, packedLight, packedOverlay, color);
 
         MultiBufferSource bufferSource = Minecraft.getInstance().renderBuffers().bufferSource();
         attachments.forEach((itemStack, model) -> renderArmorPiece(poseStack, bufferSource, entity, equipmentSlot, packedLight, itemStack, model));
     }
 
-    private void renderArmorPiece(PoseStack poseStack, MultiBufferSource bufferSource, T entity, EquipmentSlot equipmentSlot, int packedLight, ItemStack itemStack, Model model) {
+    private void renderArmorPiece(PoseStack poseStack, MultiBufferSource bufferSource, T entity, EquipmentSlot slot, int packedLight, ItemStack itemStack, Model model) {
         HumanoidArmorLayerInvoker armorLayerInvoker = (HumanoidArmorLayerInvoker) armorLayer;
         ArmorItem item = (ArmorItem) itemStack.getItem();
 
-        boolean usesInnerModel = armorLayerInvoker.invokeUsesInnerModel(equipmentSlot);
-        if (item instanceof DyeableLeatherItem dyeableLeatherItem) {
-            int i = dyeableLeatherItem.getColor(itemStack);
-            float f = (float)(i >> 16 & 255) / 255.0F;
-            float f1 = (float)(i >> 8 & 255) / 255.0F;
-            float f2 = (float)(i & 255) / 255.0F;
-            armorLayerInvoker.invokeRenderModel(poseStack, bufferSource, packedLight, item, model, usesInnerModel, f, f1, f2, armorLayer.getArmorResource(entity, itemStack, equipmentSlot, null));
-            armorLayerInvoker.invokeRenderModel(poseStack, bufferSource, packedLight, item, model, usesInnerModel, 1.0F, 1.0F, 1.0F, armorLayer.getArmorResource(entity, itemStack, equipmentSlot, "overlay"));
-        } else {
-            armorLayerInvoker.invokeRenderModel(poseStack, bufferSource, packedLight, item, model, usesInnerModel, 1.0F, 1.0F, 1.0F, armorLayer.getArmorResource(entity, itemStack, equipmentSlot, null));
+
+        boolean usesInnerModel = armorLayerInvoker.invokeUsesInnerModel(slot);
+        ArmorMaterial material = item.getMaterial().value();
+
+        IClientItemExtensions extensions = IClientItemExtensions.of(itemStack);
+        // extensions.setupModelAnimations(entity, itemStack, slot, model, limbSwing, limbSwingAmount, partialTick, ageInTicks, netHeadYaw, headPitch); TODO
+        int fallbackColor = extensions.getDefaultDyeColor(itemStack);
+        for (int layerIdx = 0; layerIdx < material.layers().size(); layerIdx++) {
+            ArmorMaterial.Layer armormaterial$layer = material.layers().get(layerIdx);
+            int j = extensions.getArmorLayerTintColor(itemStack, entity, armormaterial$layer, layerIdx, fallbackColor);
+            if (j != 0) {
+                var texture = ClientHooks.getArmorTexture(entity, itemStack, armormaterial$layer, usesInnerModel, slot);
+                armorLayerInvoker.invokeRenderModel(poseStack, bufferSource, packedLight, model, j, texture);
+            }
         }
-        ArmorTrim.getTrim(entity.level().registryAccess(), itemStack).ifPresent((armorTrim) ->
-                armorLayerInvoker.invokeRenderTrim(item.getMaterial(), poseStack, bufferSource, packedLight, armorTrim, model, usesInnerModel));
+
+        ArmorTrim armortrim = itemStack.get(DataComponents.TRIM);
+        if (armortrim != null) {
+            armorLayerInvoker.invokeRenderTrim(item.getMaterial(), poseStack, bufferSource, packedLight, armortrim, model, usesInnerModel);
+        }
+
         if (itemStack.hasFoil()) {
             armorLayerInvoker.invokeRenderGlint(poseStack, bufferSource, packedLight, model);
         }
