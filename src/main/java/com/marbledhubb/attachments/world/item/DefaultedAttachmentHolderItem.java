@@ -1,7 +1,6 @@
-package com.marbledhubb.attachments.item;
+package com.marbledhubb.attachments.world.item;
 
 import com.google.common.collect.Multimap;
-import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -14,32 +13,20 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ClickAction;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.inventory.tooltip.TooltipComponent;
-import net.minecraft.world.item.ArmorItem;
-import net.minecraft.world.item.ArmorMaterial;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.client.extensions.common.IClientItemExtensions;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Optional;
 import java.util.function.Consumer;
 
-public class DefaultedAttachmentHolderArmorItem extends ArmorItem implements AttachmentHolderItem {
+public class DefaultedAttachmentHolderItem extends Item implements AttachmentHolderItem {
     private final AttachmentSlotSettings[] attachmentSlotSettings;
 
-    public DefaultedAttachmentHolderArmorItem(ArmorMaterial armorMaterial, Type type, Properties properties, AttachmentSlotSettings[] attachmentSlotSettings) {
-        super(armorMaterial, type, properties);
+    public DefaultedAttachmentHolderItem(Properties properties, AttachmentSlotSettings[] attachmentSlotSettings) {
+        super(properties);
         this.attachmentSlotSettings = attachmentSlotSettings;
-    }
-
-    @Override
-    public void initializeClient(Consumer<IClientItemExtensions> consumer) {
-        consumer.accept(new IClientItemExtensions() {
-            @Override
-            public @NotNull HumanoidModel<?> getHumanoidArmorModel(LivingEntity livingEntity, ItemStack itemStack, EquipmentSlot equipmentSlot, HumanoidModel<?> original) {
-                return AttachmentHolderItem.getArmorModel(original, livingEntity, itemStack, equipmentSlot, original);
-            }
-        });
     }
 
     @Override

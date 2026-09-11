@@ -1,7 +1,7 @@
 package com.marbledhubb.attachments;
 
-import com.marbledhubb.attachments.client.tooltip.ClientAttachmentHolderTooltip;
-import com.marbledhubb.attachments.tooltip.AttachmentHolderTooltip;
+import com.marbledhubb.attachments.client.gui.screens.inventory.tooltip.ClientAttachmentHolderTooltip;
+import com.marbledhubb.attachments.world.inventory.tooltip.AttachmentHolderTooltip;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;

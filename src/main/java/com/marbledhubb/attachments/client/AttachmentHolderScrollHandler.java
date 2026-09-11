@@ -1,9 +1,9 @@
 package com.marbledhubb.attachments.client;
 
 import com.marbledhubb.attachments.AttachmentLib;
-import com.marbledhubb.attachments.item.AttachmentHolderItem;
 import com.marbledhubb.attachments.mixin.client.AbstractContainerScreenInvoker;
 import com.marbledhubb.attachments.network.ShiftSelectedAttachmentSlotMessage;
+import com.marbledhubb.attachments.world.item.AttachmentHolderItem;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;

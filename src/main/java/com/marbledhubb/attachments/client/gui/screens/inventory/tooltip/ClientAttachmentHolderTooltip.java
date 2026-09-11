@@ -1,8 +1,8 @@
-package com.marbledhubb.attachments.client.tooltip;
+package com.marbledhubb.attachments.client.gui.screens.inventory.tooltip;
 
 import com.marbledhubb.attachments.AttachmentLib;
-import com.marbledhubb.attachments.item.AttachmentSlotSettings;
-import com.marbledhubb.attachments.tooltip.AttachmentHolderTooltip;
+import com.marbledhubb.attachments.world.inventory.tooltip.AttachmentHolderTooltip;
+import com.marbledhubb.attachments.world.item.AttachmentSlotSettings;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;

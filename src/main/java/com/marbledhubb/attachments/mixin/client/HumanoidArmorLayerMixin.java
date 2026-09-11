@@ -1,6 +1,6 @@
 package com.marbledhubb.attachments.mixin.client;
 
-import com.marbledhubb.attachments.client.renderer.AttachmentHolderArmorModel;
+import com.marbledhubb.attachments.client.model.AttachmentHolderArmorModel;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.Model;
 import net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer;

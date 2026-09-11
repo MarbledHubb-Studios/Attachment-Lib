@@ -1,4 +1,4 @@
-package com.marbledhubb.attachments.item;
+package com.marbledhubb.attachments.world.item;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;

@@ -1,9 +1,9 @@
-package com.marbledhubb.attachments.item;
+package com.marbledhubb.attachments.world.item;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
-import com.marbledhubb.attachments.client.renderer.AttachmentHolderArmorModel;
-import com.marbledhubb.attachments.tooltip.AttachmentHolderTooltip;
+import com.marbledhubb.attachments.client.model.AttachmentHolderArmorModel;
+import com.marbledhubb.attachments.world.inventory.tooltip.AttachmentHolderTooltip;
 import com.marbledhubb.attachments.util.EquipmentUtil;
 import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.Model;

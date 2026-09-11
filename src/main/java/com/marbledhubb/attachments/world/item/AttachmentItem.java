@@ -1,4 +1,4 @@
-package com.marbledhubb.attachments.item;
+package com.marbledhubb.attachments.world.item;
 
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;

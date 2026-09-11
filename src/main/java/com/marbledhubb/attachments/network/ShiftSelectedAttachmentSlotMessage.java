@@ -1,7 +1,7 @@
 package com.marbledhubb.attachments.network;
 
 import com.marbledhubb.attachments.AttachmentLib;
-import com.marbledhubb.attachments.item.AttachmentHolderItem;
+import com.marbledhubb.attachments.world.item.AttachmentHolderItem;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.inventory.AbstractContainerMenu;

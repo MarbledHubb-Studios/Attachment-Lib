@@ -1,6 +1,6 @@
 package com.marbledhubb.attachments.mixin;
 
-import com.marbledhubb.attachments.item.AttachmentHolderItem;
+import com.marbledhubb.attachments.world.item.AttachmentHolderItem;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
