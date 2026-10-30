@@ -36,14 +36,14 @@ public class AttachmentSlotSettings {
                 ResourceLocation.fromNamespaceAndPath(itemTag.location().getNamespace(), "textures/gui/container/attachment_slot/%s.png".formatted(itemTag.location().getPath())));
     }
 
-    public AttachmentSlotSettings(Function<ItemStack, Boolean> placementCondition, boolean renderArmorModel, ResourceLocation iconLocation) {
+    public AttachmentSlotSettings(Function<ItemStack, Boolean> placementCondition, boolean isStorageSlot, ResourceLocation iconLocation) {
         this.placementCondition = placementCondition;
-        this.isStorageSlot = renderArmorModel;
+        this.isStorageSlot = isStorageSlot;
         this.iconLocation = iconLocation;
     }
 
     public static boolean doesItemHaveNoAttachments(ItemStack itemStack) {
-        return !(itemStack.getItem() instanceof AttachmentHolderItem attachmentHolder) || attachmentHolder.getAttachments(itemStack).isEmpty();
+        return !(itemStack.getItem() instanceof AttachmentHolderItem) || AttachmentHolderItem.getAttachments(itemStack).isEmpty();
     }
 
     public boolean mayPlace(ItemStack itemStack) {

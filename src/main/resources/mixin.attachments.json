@@ -5,11 +5,14 @@
   "compatibilityLevel": "JAVA_17",
   "client": [
     "client.AbstractContainerScreenInvoker",
-    "client.HumanoidArmorLayerInvoker",
-    "client.HumanoidArmorLayerMixin"
+    "client.HumanoidArmorLayerMixin",
+    "client.RenderLayerAccessor"
   ],
   "mixins": [
-    "LivingEntityMixin"
+    "IForgeItemStackMixin",
+    "ItemStackMixin",
+    "LivingEntityMixin",
+    "client.ForgeHooksClientMixin"
   ],
   "injectors": {
     "defaultRequire": 1
