@@ -2,7 +2,9 @@ package com.marbledhubb.attachments;
 
 import com.marbledhubb.attachments.client.AttachmentRendererRegistry;
 import com.marbledhubb.attachments.client.gui.screens.inventory.tooltip.ClientAttachmentHolderTooltip;
+import com.marbledhubb.attachments.client.gui.screens.inventory.tooltip.ClientCompositeTooltip;
 import com.marbledhubb.attachments.world.inventory.tooltip.AttachmentHolderTooltip;
+import com.marbledhubb.attachments.world.inventory.tooltip.CompositeTooltip;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
@@ -20,8 +22,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 
 @Mod(AttachmentLib.MOD_ID)
-public class AttachmentLib
-{
+public class AttachmentLib {
     public static final String MOD_ID = "attachments";
 
     public AttachmentLib()
@@ -34,6 +35,7 @@ public class AttachmentLib
         @SubscribeEvent
         public static void registerClientTooltipComponents(RegisterClientTooltipComponentFactoriesEvent event) {
             event.register(AttachmentHolderTooltip.class, ClientAttachmentHolderTooltip::new);
+            event.register(CompositeTooltip.class, ClientCompositeTooltip::new);
         }
 
         @SubscribeEvent

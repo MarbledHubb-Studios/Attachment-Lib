@@ -9,7 +9,6 @@ import net.minecraft.client.model.Model;
 import net.minecraft.client.model.geom.ModelLayers;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.RenderLayerParent;
-import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.*;
 import net.minecraftforge.api.distmarker.Dist;
@@ -32,7 +31,7 @@ public class AttachmentHolderArmorModel<T extends LivingEntity> extends Humanoid
     private float netHeadYaw;
     private float headPitch;
 
-    public AttachmentHolderArmorModel(Model baseModel, T entity, EquipmentSlot equipmentSlot, Map<ItemStack, AttachmentRenderer> attachments) {
+    public AttachmentHolderArmorModel(Model baseModel, T entity, Map<ItemStack, AttachmentRenderer> attachments) {
         super(Minecraft.getInstance().getEntityModels().bakeLayer(ModelLayers.PLAYER_INNER_ARMOR));
         this.baseModel = baseModel;
         this.entity = entity;

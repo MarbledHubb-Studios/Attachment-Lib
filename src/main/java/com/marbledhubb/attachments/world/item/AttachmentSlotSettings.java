@@ -46,7 +46,7 @@ public class AttachmentSlotSettings {
         return !(itemStack.getItem() instanceof AttachmentHolderItem) || AttachmentHolderItem.getAttachments(itemStack).isEmpty();
     }
 
-    public boolean mayPlace(ItemStack itemStack) {
+    public boolean canPlace(ItemStack itemStack) {
         return placementCondition.apply(itemStack);
     }
 

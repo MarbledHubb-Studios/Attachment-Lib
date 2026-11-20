@@ -5,7 +5,6 @@ import com.google.common.collect.Multimap;
 import com.marbledhubb.attachments.client.AttachmentRenderer;
 import com.marbledhubb.attachments.client.AttachmentRendererRegistry;
 import com.marbledhubb.attachments.client.model.AttachmentHolderArmorModel;
-import com.marbledhubb.attachments.world.inventory.tooltip.AttachmentHolderTooltip;
 import com.marbledhubb.attachments.util.EquipmentUtil;
 import net.minecraft.client.model.Model;
 import net.minecraft.nbt.CompoundTag;
@@ -17,14 +16,11 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.SlotAccess;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
-import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ClickAction;
 import net.minecraft.world.inventory.Slot;
-import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import net.minecraft.world.item.Equipable;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.ItemUtils;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.NotNull;
 
@@ -46,7 +42,7 @@ public interface AttachmentHolderItem {
         int slotIndex = 0;
         for (AttachmentSlotSettings slotSettings : getAttachmentSlotSettings()) {
             if (!attachments.containsKey(slotIndex)) {
-                if (slotSettings.mayPlace(possibleAttachmentStack) &&
+                if (slotSettings.canPlace(possibleAttachmentStack) &&
                         (!isAttachmentItem ||
                                 (fromUse ?
                                         ((AttachmentItem) possibleAttachmentStack.getItem()).canAttachFromUse(slotSettings, possibleAttachmentStack, holderStack, slotIndex, entity) :
@@ -122,7 +118,8 @@ public interface AttachmentHolderItem {
             listTag.remove(i);
             if (listTag.isEmpty()) compoundTag.remove("Attachments");
 
-            compoundTag.remove("SelectedSlot");
+            if (compoundTag.contains("SelectedSlot") && compoundTag.getInt("SelectedSlot") ==  slotIndex)
+                compoundTag.remove("SelectedSlot");
 
             return Optional.of(attachmentStack);
         }
@@ -142,10 +139,17 @@ public interface AttachmentHolderItem {
             if (pairTag.getInt("Slot") == slotIndex) {
                 listTag.remove(pairTag);
 
-                CompoundTag newPairTag = new CompoundTag();
-                newPairTag.putInt("Slot", slotIndex);
-                newPairTag.put("Attachment", attachmentStack.save(new CompoundTag()));
-                listTag.add(newPairTag);
+                if (attachmentStack.isEmpty()) {
+                    if (listTag.isEmpty()) compoundTag.remove("Attachments");
+
+                    if (compoundTag.contains("SelectedSlot") && compoundTag.getInt("SelectedSlot") ==  slotIndex)
+                        compoundTag.remove("SelectedSlot");
+                } else {
+                    CompoundTag newPairTag = new CompoundTag();
+                    newPairTag.putInt("Slot", slotIndex);
+                    newPairTag.put("Attachment", attachmentStack.save(new CompoundTag()));
+                    listTag.add(newPairTag);
+                }
                 break;
             }
         }
@@ -215,7 +219,7 @@ public interface AttachmentHolderItem {
         }
     }
 
-    default boolean overrideStackedOnOther(@NotNull ItemStack itemStack, @NotNull Slot slot, @NotNull ClickAction clickAction, @NotNull Player player) {
+    default boolean attachmentHolderStackedOnOther(@NotNull ItemStack itemStack, @NotNull Slot slot, @NotNull ClickAction clickAction, @NotNull Player player) {
         if (clickAction == ClickAction.SECONDARY) {
             if (slot.getItem().isEmpty()) {
                 Optional<ItemStack> removedAttachment = tryDetachItem(true, itemStack, player);
@@ -231,7 +235,7 @@ public interface AttachmentHolderItem {
         return false;
     }
 
-    default boolean overrideOtherStackedOnMe(@NotNull ItemStack itemStack, @NotNull ItemStack possibleAttachment, @NotNull Slot slot, @NotNull ClickAction clickAction, @NotNull Player player, @NotNull SlotAccess slotAccess) {
+    default boolean otherStackedOnAttachmentHolder(@NotNull ItemStack itemStack, @NotNull ItemStack possibleAttachment, @NotNull Slot slot, @NotNull ClickAction clickAction, @NotNull Player player, @NotNull SlotAccess slotAccess) {
         if (clickAction == ClickAction.SECONDARY && slot.allowModification(player)) {
             if (possibleAttachment.isEmpty()) {
                 Optional<ItemStack> removedAttachment = tryDetachItem(false, itemStack, player);
@@ -277,7 +281,7 @@ public interface AttachmentHolderItem {
         return map;
     }
 
-    default void inventoryTick(@NotNull ItemStack itemStack, @NotNull Level level, @NotNull Entity entity, int slotIndex, boolean selected) {
+    default void attachmentHolderInventoryTick(@NotNull ItemStack itemStack, @NotNull Level level, @NotNull Entity entity, int slotIndex, boolean selected) {
         getAttachments(itemStack).forEach((attachmentSlotIndex, attachment) -> {
             if (attachment.getItem() instanceof AttachmentItem attachmentItem) {
                 if (getAttachmentSlotSettings()[attachmentSlotIndex].isStorageSlot()) {
@@ -289,26 +293,15 @@ public interface AttachmentHolderItem {
         });
     }
 
-    default <T extends LivingEntity> void damageAttachments(ItemStack itemStack, int amount, T entity, Consumer<T> onBroken) {
-        getAttachments(itemStack).forEach((slotIndex, attachmentStack) -> {
+    default <T extends LivingEntity> void damageAttachments(ItemStack holderStack, int amount, T entity, Consumer<T> onBroken) {
+        getAttachments(holderStack).forEach((slotIndex, attachmentStack) -> {
             AttachmentSlotSettings slotSettings = getAttachmentSlotSettings()[slotIndex];
             if (!slotSettings.isStorageSlot()) {
                 attachmentStack.hurtAndBreak(amount, entity, onBroken);
-                if (attachmentStack.getItem() instanceof AttachmentItem item) item.onAttachmentBreak(slotSettings, attachmentStack, itemStack, slotIndex, entity);
-                updateAttachment(itemStack, attachmentStack, slotIndex);
+                if (attachmentStack.getItem() instanceof AttachmentItem item) item.onAttachmentBreak(slotSettings, attachmentStack, holderStack, slotIndex, entity);
+                updateAttachment(holderStack, attachmentStack, slotIndex);
             }
         });
-    }
-
-    static void onDestroyed(ItemEntity itemEntity) {
-        List<ItemStack> list = new ArrayList<>();
-        getAttachments(itemEntity.getItem()).forEach((slotIndex, attachment) -> list.add(attachment));
-
-        ItemUtils.onContainerDestroyed(itemEntity, list.stream());
-    }
-
-    default @NotNull Optional<TooltipComponent> getTooltipImage(@NotNull ItemStack itemStack) {
-        return Optional.of(new AttachmentHolderTooltip(getAttachmentSlotSettings(), getAttachments(itemStack), getSelectedSlotIndex(itemStack)));
     }
 
 
@@ -318,12 +311,11 @@ public interface AttachmentHolderItem {
         if (itemStack.getItem() instanceof AttachmentHolderItem holderItem) {
             AttachmentHolderItem.getAttachments(itemStack).forEach((slotIndex, attachmentStack) -> {
                 AttachmentSlotSettings slotSettings = holderItem.getAttachmentSlotSettings()[slotIndex];
-                if (!slotSettings.isStorageSlot() &&
-                        (!(attachmentStack.getItem() instanceof AttachmentItem attachmentItem) || attachmentItem.canRenderArmorModel(slotSettings, attachmentStack, itemStack, slotIndex, livingEntity)))
+                if (!slotSettings.isStorageSlot())
                     AttachmentRendererRegistry.getRenderer(attachmentStack.getItem()).ifPresent(value -> attachments.put(attachmentStack, value));
             });
         }
 
-        return new AttachmentHolderArmorModel<>(baseModel, livingEntity, equipmentSlot, attachments);
+        return new AttachmentHolderArmorModel<>(baseModel, livingEntity, attachments);
     }
 }

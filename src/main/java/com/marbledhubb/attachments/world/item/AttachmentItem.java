@@ -33,9 +33,10 @@ public interface AttachmentItem {
         return true;
     }
 
-    default List<Component> getSlotsTooltip(List<Component> tooltips, ItemStack attachmentStack) {
-        return tooltips;
-    }
+    // TODO?
+    //default List<Component> getSlotsTooltip(List<Component> tooltips, ItemStack attachmentStack) {
+    //    return tooltips;
+    //}
 
     default Multimap<Attribute, AttributeModifier> getAttributeModifiers(AttachmentSlotSettings slotSettings, ItemStack attachmentStack, ItemStack holderStack, int slotIndex) {
         return HashMultimap.create();
@@ -58,9 +59,5 @@ public interface AttachmentItem {
 
     default List<Component> getAttributesTooltip(List<Component> tooltips, ItemStack attachmentStack) {
         return tooltips;
-    }
-
-    default boolean canRenderArmorModel(AttachmentSlotSettings slotSettings, ItemStack attachmentStack, ItemStack holderStack, int slotIndex, LivingEntity entity) {
-        return true;
     }
 }
